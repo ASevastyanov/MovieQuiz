@@ -3,31 +3,40 @@ import UIKit
 
 // MARK: - Структуры приложения
 
-//Структура для конвертации вопросов с мока
+///Структура для конвертации вопросов с мока
 struct QuizQuestion {
-    let image: String // строка с названием фильма, совпадает с названием картинки афиши фильма в Assets
-    let text: String // строка с вопросом о рейтинге фильма
-    let correctAnswer: Bool // булевое значение (true, false), правильный ответ на вопрос
+    /// Строка с названием фильма, совпадает с названием картинки афиши фильма в Assets
+    let image: String
+    /// Строка с вопросом о рейтинге фильма
+    let text: String
+    /// Булевое значение (true, false), правильный ответ на вопрос
+    let correctAnswer: Bool
 }
 
-// вью модель для состояния "Вопрос показан"
+/// Вью модель для состояния "Вопрос показан"
 struct QuizStepViewModel {
-    let image: UIImage // картинка с афишей фильма с типом UIImage
-    let question: String // вопрос о рейтинге квиза
-    let questionNumber: String // строка с порядковым номером этого вопроса (ex. "1/10")
+    // Картинка с афишей фильма с типом UIImage
+    let image: UIImage
+    // Вопрос о рейтинге квиза
+    let question: String
+    // Строка с порядковым номером этого вопроса (ex. "1/10")
+    let questionNumber: String
 }
 
-//Стуктура для работы алерта
+///Стуктура для работы алерта
 struct QuizResultsViewModel {
-    let title: String // строка с заголовком алерта
-    let text: String // строка с текстом о количестве набранных очков
-    let buttonText: String // текст для кнопки алерта
+    /// Строка с заголовком алерта
+    let title: String
+    /// Строка с текстом о количестве набранных очков
+    let text: String
+    /// Секст для кнопки алерта
+    let buttonText: String
 }
 
 //MARK: - Основной класс приложения
 final class MovieQuizViewController: UIViewController {
     
-    // Моки данных для квиза
+    /// Моки данных для квиза
     private let questions: [QuizQuestion] = [
         QuizQuestion(
             image: "The Godfather",
@@ -71,12 +80,21 @@ final class MovieQuizViewController: UIViewController {
             correctAnswer: false)
     ]
     
-    private var currentQuestionIndex = 0 //счетчик вопросов
-    private var correctAnswers = 0 //кол-во правильных ответов
+    ///Счетчик вопросов
+    private var currentQuestionIndex = 0
+    ///Rол-во правильных ответов
+    private var correctAnswers = 0
     
-    @IBOutlet private var imageView: UIImageView!
+    ///Переменная для изменения цвета StatusBar
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return .lightContent
+    }
+    
+    @IBOutlet private var imageView: UIImageView?
     @IBOutlet private var textLabel: UILabel!
     @IBOutlet private var counterLabel: UILabel!
+    @IBOutlet private var yesButtonClicked: UIButton!
+    @IBOutlet private var noButtonClicked: UIButton!
     
     @IBAction private func yesButtonClicked(_ sender: UIButton) {
         print("Press YES")
@@ -103,7 +121,7 @@ final class MovieQuizViewController: UIViewController {
     }
     
     //MARK: - Методы (Логика работы)
-    // Метод для ковертации вопросов из мока
+    /// Метод для ковертации вопросов из мока
     private func convert(model: QuizQuestion) -> QuizStepViewModel {
         let questionStep = QuizStepViewModel(
             image: UIImage(named: model.image) ?? UIImage(),
@@ -113,13 +131,15 @@ final class MovieQuizViewController: UIViewController {
         return questionStep
     }
     
-    // Метод для отображения вопросов
+    /// Метод для отображения вопросов
     private func show(quiz step: QuizStepViewModel) {
         counterLabel.text = step.questionNumber
-        imageView.image = step.image
+        imageView?.image = step.image
         textLabel.text = step.question
+       
+        buttonisEnabled(Bool: true) //метод для включение кнопок
         
-        self.imageView.layer.borderWidth = 0 //Убрать рамку с появление нового вопроса(showAnswerResult)
+        imageView?.layer.borderWidth = 0 //Убрать рамку с появление нового вопроса(showAnswerResult)
         print("Метод для отображения впороса \(step.questionNumber)")
     }
     
@@ -130,16 +150,18 @@ final class MovieQuizViewController: UIViewController {
             print("Ответ засчитан \(correctAnswers)")
         }
         print("Ответ верный? = \(isCorrect)")
-        imageView.layer.masksToBounds = true
-        imageView.layer.borderWidth = 8
-        imageView.layer.borderColor = isCorrect ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
+        imageView?.layer.masksToBounds = true
+        imageView?.layer.borderWidth = 8
+        imageView?.layer.borderColor = isCorrect ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
+        
+        buttonisEnabled(Bool: false) // Метод для выключения кнопок
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.showNextQuestionOrResults()
         }
     }
     
-    // Логика перехода в один из сценариев
+    /// Логика перехода в один из сценариев
     private func showNextQuestionOrResults() {
         if currentQuestionIndex == questions.count - 1 {
             print("Алерт вызван")
@@ -156,10 +178,9 @@ final class MovieQuizViewController: UIViewController {
             let viewModel = convert(model: nextQuestion)
             show(quiz: viewModel)
         }
-        
     }
     
-    // Метод работы с результатами квиза
+    /// Метод работы с результатами квиза
     private func show(quiz result: QuizResultsViewModel) {
         print("Алерт показан")
         let alert = UIAlertController(
@@ -179,5 +200,11 @@ final class MovieQuizViewController: UIViewController {
         alert.addAction(action)
         
         self.present(alert, animated: true, completion: nil)
+    }
+    
+    ///Метод включения выключения кнопок во время показа результата
+    private func buttonisEnabled(Bool: Bool){
+        noButtonClicked.isEnabled = Bool
+        yesButtonClicked.isEnabled = Bool
     }
 }
