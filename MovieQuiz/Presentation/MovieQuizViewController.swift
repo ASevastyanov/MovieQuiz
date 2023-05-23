@@ -2,8 +2,8 @@ import UIKit
 
 //MARK: - Основной класс приложения
 final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
-
     
+    private var alertPresenter: AlertPresenterProtocol?
     ///Счетчик вопросов
     private var currentQuestionIndex = 0
     ///Кол-во правильных ответов
@@ -46,21 +46,22 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        alertPresenter = AlertPresenter(viewController: self)
+        
         questionFactory = QuestionFactory(delegate: self)
         questionFactory?.requestNextQuestion()
     }
     
     // MARK: - QuestionFactoryDelegate
-
     func didReceiveNextQuestion(question: QuizQuestion?) {
         guard let question = question else {
             return
         }
         currentQuestion = question
-           let viewModel = convert(model: question)
-           DispatchQueue.main.async { [weak self] in
-               self?.show(quiz: viewModel)
-           }
+        let viewModel = convert(model: question)
+        DispatchQueue.main.async { [weak self] in
+            self?.showQuiz(quiz: viewModel)
+        }
     }
     
     //MARK: - Методы (Логика работы)
@@ -74,11 +75,11 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     }
     
     /// Метод для отображения вопросов
-    private func show(quiz step: QuizStepViewModel) {
+    private func showQuiz(quiz step: QuizStepViewModel) {
         counterLabel.text = step.questionNumber
         imageView?.image = step.image
         textLabel.text = step.question
-       
+        
         buttonIsEnabled(Bool: true) //метод для включение кнопок
         
         imageView?.layer.borderWidth = 0 //Убрать рамку с появление нового вопроса(showAnswerResult)
@@ -104,21 +105,34 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     /// Логика перехода в один из сценариев
     private func showNextQuestionOrResults() {
         if currentQuestionIndex == questionsAmount - 1 {
-            show()
+            let text = correctAnswers == questionsAmount ?
+                    "Поздравляем, Вы ответили на 10 из 10!" :
+                    "Вы ответили на \(correctAnswers) из 10, попробуйте ещё раз!"
+
+        let viewModel = QuizResultsViewModel(
+                       title: "Этот раунд окончен!",
+                       text: text,
+                       buttonText: "Сыграть ещё раз")
+
+        showResult(quiz: viewModel)
         } else {
             currentQuestionIndex += 1
             questionFactory?.requestNextQuestion()
         }
     }
-    
+
     ///Метод для отображения алерта с результатми игры
-    func show() {
-        let model = AlertModel(title: "Этот раунд окончен!", message: "Ваш результат: \(correctAnswers)/10", buttonText: "Сыграть ещё раз", completion: {
+    func showResult(quiz result: QuizResultsViewModel) {
+        let alertModel = AlertModel(title: result.title,
+                                    message: result.text,
+                                    buttonText: result.buttonText,
+                                    completion: { [weak self] in
+            guard let self else {return}
             self.currentQuestionIndex = 0
             self.correctAnswers = 0
             self.questionFactory?.requestNextQuestion()
         })
-        AlertPresenter.showAlert(from: self, model: model)
+        alertPresenter?.showAlert(with: alertModel)
     }
     
     ///Метод включения выключения кнопок во время показа результата
