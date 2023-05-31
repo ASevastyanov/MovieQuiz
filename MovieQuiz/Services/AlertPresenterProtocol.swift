@@ -1,5 +1,5 @@
 import UIKit
 
-protocol AlertPresenterProtocol {
+protocol AlertPresenterProtocol: AnyObject {
     func showAlert(with model: AlertModel)
 }

@@ -3,21 +3,25 @@ import UIKit
 //MARK: - Основной класс приложения
 final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
+    // MARK: - Propeties
     private var alertPresenter: AlertPresenterProtocol?
     ///Счетчик вопросов
     private var currentQuestionIndex = 0
     ///Кол-во правильных ответов
     private var correctAnswers = 0
-    
+    ///Кол-во вопросов для одного раунда
     private let questionsAmount: Int = 10
+    // Делегаты
     private var questionFactory: QuestionFactoryProtocol?
     private var currentQuestion: QuizQuestion?
+    private var statisticService: StatisticService?
     
     ///Переменная для изменения цвета StatusBar
     override var preferredStatusBarStyle: UIStatusBarStyle {
         return .lightContent
     }
     
+    // MARK: - @IBOutlet
     @IBOutlet private weak var imageView: UIImageView?
     @IBOutlet private var textLabel: UILabel!
     @IBOutlet private var counterLabel: UILabel!
@@ -47,9 +51,10 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         super.viewDidLoad()
         
         alertPresenter = AlertPresenter(viewController: self)
-        
+        statisticService = StatisticServiceImplementation()
         questionFactory = QuestionFactory(delegate: self)
         questionFactory?.requestNextQuestion()
+        
     }
     
     // MARK: - QuestionFactoryDelegate
@@ -105,27 +110,20 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     /// Логика перехода в один из сценариев
     private func showNextQuestionOrResults() {
         if currentQuestionIndex == questionsAmount - 1 {
-            let text = correctAnswers == questionsAmount ?
-                    "Поздравляем, Вы ответили на 10 из 10!" :
-                    "Вы ответили на \(correctAnswers) из 10, попробуйте ещё раз!"
-
-        let viewModel = QuizResultsViewModel(
-                       title: "Этот раунд окончен!",
-                       text: text,
-                       buttonText: "Сыграть ещё раз")
-
-        showResult(quiz: viewModel)
+            showResult()
         } else {
             currentQuestionIndex += 1
             questionFactory?.requestNextQuestion()
         }
     }
-
+    
     ///Метод для отображения алерта с результатми игры
-    func showResult(quiz result: QuizResultsViewModel) {
-        let alertModel = AlertModel(title: result.title,
-                                    message: result.text,
-                                    buttonText: result.buttonText,
+    private func showResult() {
+        statisticService?.store(correct: correctAnswers, total: questionsAmount)
+        
+        let alertModel = AlertModel(title: "Этот раунд окончен!",
+                                    message: makeResultMassage(),
+                                    buttonText: "Сыграть еще раз",
                                     completion: { [weak self] in
             guard let self else {return}
             self.currentQuestionIndex = 0
@@ -133,6 +131,26 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
             self.questionFactory?.requestNextQuestion()
         })
         alertPresenter?.showAlert(with: alertModel)
+    }
+    
+    ///Генерация результата для алерта
+    private func makeResultMassage() -> String {
+        
+        guard let statisticService = statisticService, let bestGame = statisticService.bestGame else {
+            assertionFailure("Error massge")
+            return ""
+        }
+        
+        let currentGameResultLine = "Ваш результат: \(correctAnswers)/\(questionsAmount)"
+        let totalPlaysCountLine = "Количество сыгранных квизов: \(statisticService.gamesCount)"
+        let bestGameInfoLine = "Рекорд: \(bestGame.correct)/\(bestGame.total) " + "(\(bestGame.date.dateTimeString))"
+        let averageAccuracyLine = "Средняя точность: \(String(format: "%.2f", statisticService.totalAccuracy))%"
+        
+        let resultMassage = [
+            currentGameResultLine, totalPlaysCountLine, bestGameInfoLine, averageAccuracyLine
+        ].joined(separator: "\n")
+        
+        return resultMassage
     }
     
     ///Метод включения выключения кнопок во время показа результата
