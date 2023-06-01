@@ -23,10 +23,10 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     // MARK: - @IBOutlet
     @IBOutlet private weak var imageView: UIImageView?
-    @IBOutlet private var textLabel: UILabel!
-    @IBOutlet private var counterLabel: UILabel!
-    @IBOutlet private var yesButtonClicked: UIButton!
-    @IBOutlet private var noButtonClicked: UIButton!
+    @IBOutlet private weak var textLabel: UILabel!
+    @IBOutlet private weak var counterLabel: UILabel!
+    @IBOutlet private weak var yesButtonClicked: UIButton!
+    @IBOutlet private weak var noButtonClicked: UIButton!
     
     @IBAction private func yesButtonClicked(_ sender: UIButton) {
         guard let currentQuestion = currentQuestion else {
