@@ -23,10 +23,11 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     // MARK: - @IBOutlet
     @IBOutlet private weak var imageView: UIImageView?
-    @IBOutlet private var textLabel: UILabel!
-    @IBOutlet private var counterLabel: UILabel!
-    @IBOutlet private var yesButtonClicked: UIButton!
-    @IBOutlet private var noButtonClicked: UIButton!
+    @IBOutlet private weak var textLabel: UILabel!
+    @IBOutlet private weak var counterLabel: UILabel!
+    @IBOutlet private weak var yesButtonClicked: UIButton!
+    @IBOutlet private weak var noButtonClicked: UIButton!
+    @IBOutlet private weak var activityIndicator: UIActivityIndicatorView!
     
     @IBAction private func yesButtonClicked(_ sender: UIButton) {
         guard let currentQuestion = currentQuestion else {
@@ -50,11 +51,14 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        imageView?.layer.cornerRadius = 20
         alertPresenter = AlertPresenter(viewController: self)
+        questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
         statisticService = StatisticServiceImplementation()
-        questionFactory = QuestionFactory(delegate: self)
         questionFactory?.requestNextQuestion()
         
+        showLoadingIndicator(Bool: false)
+        questionFactory?.loadData()
     }
     
     // MARK: - QuestionFactoryDelegate
@@ -70,22 +74,21 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     }
     
     //MARK: - Методы (Логика работы)
-    /// Метод для ковертации вопросов из мока
+    /// Метод для ковертации вопросов
     private func convert(model: QuizQuestion) -> QuizStepViewModel {
-        let questionStep = QuizStepViewModel(
-            image: UIImage(named: model.image) ?? UIImage(),
+        return QuizStepViewModel(
+            image: UIImage(data: model.image) ?? UIImage(),
             question: model.text,
             questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)")
-        return questionStep
     }
     
     /// Метод для отображения вопросов
-    private func showQuiz(quiz step: QuizStepViewModel) {
-        counterLabel.text = step.questionNumber
+    private func showQuiz(quiz step: QuizStepViewModel) {counterLabel.text = step.questionNumber
         imageView?.image = step.image
         textLabel.text = step.question
         
         buttonIsEnabled(Bool: true) //метод для включение кнопок
+        showLoadingIndicator(Bool: true)
         
         imageView?.layer.borderWidth = 0 //Убрать рамку с появление нового вопроса(showAnswerResult)
     }
@@ -104,6 +107,8 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             guard let self = self else {return}
             self.showNextQuestionOrResults()
+            sleep(1)
+            self.showLoadingIndicator(Bool: false)
         }
     }
     
@@ -157,5 +162,39 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     private func buttonIsEnabled(Bool: Bool) {
         noButtonClicked.isEnabled = Bool
         yesButtonClicked.isEnabled = Bool
+    }
+    
+    ///Метод для вкл/выкл лоудера при загрузки данных
+    private func showLoadingIndicator(Bool: Bool) {
+        activityIndicator.isHidden = Bool
+        if Bool == false {
+            activityIndicator.startAnimating()
+        } else {
+            activityIndicator.stopAnimating()
+        }
+    }
+    
+    ///Показ алерта с ошибкой
+    private func showNetworkError(message: String) {
+        showLoadingIndicator(Bool: false)
+        buttonIsEnabled(Bool: false)
+        
+        let alertModel = AlertModel(title: "Ошибка",
+                                    message: message,
+                                    buttonText: "Попробовать еще раз",
+                                    completion: { [weak self] in
+            guard let self else { return }
+            self.questionFactory?.loadData()
+        })
+        alertPresenter?.showAlert(with: alertModel)
+    }
+    ///Метод при успешной загрузки данных и вывода их
+    func didLoadDataFromServer() {
+        showLoadingIndicator(Bool: true)
+        questionFactory?.requestNextQuestion()
+    }
+    ///Метод при ошибки загрузки данных
+    func didFailToLoadData(with error: Error) {
+        showNetworkError(message: error.localizedDescription)
     }
 }
