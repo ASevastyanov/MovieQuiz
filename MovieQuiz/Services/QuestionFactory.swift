@@ -6,6 +6,20 @@ import Foundation
 
 class QuestionFactory: QuestionFactoryProtocol {
     
+    enum SetWordsForAnswer {
+        case more
+        case less
+        
+        var title: String {
+            switch self {
+            case .more:
+                return "больше"
+            case .less:
+                return "меньше"
+            }
+        }
+    }
+    
     private let moviesLoader: MoviesLoading
     private weak var delegate: QuestionFactoryDelegate?
     private var movies: [MostPopularMovie] = []
@@ -47,17 +61,13 @@ class QuestionFactory: QuestionFactoryProtocol {
                     self.delegate?.didFailToLoadData(with: NetworkClient.NetworkError.codeError)
                 }
             }
-            
             let rating = Float(movie.rating) ?? 0
-            let randomOffset = Float.random(in: 3...9)
-            let text = {
-                if rating > randomOffset {
-                    return "Рейтинг этого фильма больше чем \(Int(randomOffset))?"
-                } else {
-                    return "Рейтинг этого фильма меньше чем \(Int(randomOffset))?"
-                }
-            } ()
-            let correctAnswer =  rating > randomOffset
+            let randomOffset = Int.random(in: 4...9)
+            var randomAnswer: SetWordsForAnswer? = [.less, .more].randomElement()
+            let text = "Рейтинг этого фильма \(randomAnswer!.title) чем \(randomOffset)?"
+            var correctAnswer: Bool = generationCorrectAnswer(answer: randomAnswer,
+                                                              rating: rating,
+                                                              randomOffset: Float(randomOffset))
             
             let question = QuizQuestion(image: imageData,
                                         text: text,
@@ -68,6 +78,22 @@ class QuestionFactory: QuestionFactoryProtocol {
                 self.delegate?.didReceiveNextQuestion(question: question)
             }
         }
+    }
+    
+    private func generationCorrectAnswer(answer: QuestionFactory.SetWordsForAnswer?,
+                                         rating: Float,
+                                         randomOffset: Float) -> Bool {
+        var answerReturn = false
+        
+        switch answer {
+        case .more:
+            answerReturn = rating > randomOffset
+        case .less:
+            answerReturn = rating < randomOffset
+        default:
+            break
+        }
+        return answerReturn
     }
 }
 

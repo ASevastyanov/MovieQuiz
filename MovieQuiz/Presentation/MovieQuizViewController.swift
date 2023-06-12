@@ -9,6 +9,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     private var currentQuestionIndex = 0
     ///Кол-во правильных ответов
     private var correctAnswers = 0
+    var correctAnswersToQuestion = 0
     ///Кол-во вопросов для одного раунда
     private let questionsAmount: Int = 10
     // Делегаты
@@ -25,8 +26,8 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     @IBOutlet private weak var imageView: UIImageView?
     @IBOutlet private weak var textLabel: UILabel!
     @IBOutlet private weak var counterLabel: UILabel!
-    @IBOutlet private weak var yesButtonClicked: UIButton!
-    @IBOutlet private weak var noButtonClicked: UIButton!
+    @IBOutlet private weak var yesAnswerButton: UIButton!
+    @IBOutlet private weak var noAnswerButton: UIButton!
     @IBOutlet private weak var activityIndicator: UIActivityIndicatorView!
     
     @IBAction private func yesButtonClicked(_ sender: UIButton) {
@@ -57,8 +58,10 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         statisticService = StatisticServiceImplementation()
         questionFactory?.requestNextQuestion()
         
-        showLoadingIndicator(Bool: false)
+        showLoadingIndicator(shouldShow: true)
         questionFactory?.loadData()
+        
+        activityIndicator.hidesWhenStopped = true
     }
     
     // MARK: - QuestionFactoryDelegate
@@ -67,7 +70,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
             return
         }
         currentQuestion = question
-        let viewModel = convert(model: question)
+        let viewModel = convertQuestions(model: question)
         DispatchQueue.main.async { [weak self] in
             self?.showQuiz(quiz: viewModel)
         }
@@ -75,7 +78,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     //MARK: - Методы (Логика работы)
     /// Метод для ковертации вопросов
-    private func convert(model: QuizQuestion) -> QuizStepViewModel {
+    private func convertQuestions(model: QuizQuestion) -> QuizStepViewModel {
         return QuizStepViewModel(
             image: UIImage(data: model.image) ?? UIImage(),
             question: model.text,
@@ -83,12 +86,13 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     }
     
     /// Метод для отображения вопросов
-    private func showQuiz(quiz step: QuizStepViewModel) {counterLabel.text = step.questionNumber
+    private func showQuiz(quiz step: QuizStepViewModel) {
+        counterLabel.text = step.questionNumber
         imageView?.image = step.image
         textLabel.text = step.question
         
         buttonIsEnabled(Bool: true) //метод для включение кнопок
-        showLoadingIndicator(Bool: true)
+        showLoadingIndicator(shouldShow: false)
         
         imageView?.layer.borderWidth = 0 //Убрать рамку с появление нового вопроса(showAnswerResult)
     }
@@ -97,6 +101,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     private func showAnswerResult(isCorrect: Bool) {
         if isCorrect {
             correctAnswers += 1 //счет очков если правильны ответ
+            correctAnswersToQuestion = correctAnswers
         }
         imageView?.layer.masksToBounds = true
         imageView?.layer.borderWidth = 8
@@ -108,7 +113,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
             guard let self = self else {return}
             self.showNextQuestionOrResults()
             sleep(1)
-            self.showLoadingIndicator(Bool: false)
+            self.showLoadingIndicator(shouldShow: true)
         }
     }
     
@@ -160,23 +165,20 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     ///Метод включения выключения кнопок во время показа результата
     private func buttonIsEnabled(Bool: Bool) {
-        noButtonClicked.isEnabled = Bool
-        yesButtonClicked.isEnabled = Bool
+        noAnswerButton.isEnabled = Bool
+        yesAnswerButton.isEnabled = Bool
     }
     
-    ///Метод для вкл/выкл лоудера при загрузки данных
-    private func showLoadingIndicator(Bool: Bool) {
-        activityIndicator.isHidden = Bool
-        if Bool == false {
+    private func showLoadingIndicator(shouldShow: Bool) {
+        if shouldShow == true {
             activityIndicator.startAnimating()
         } else {
             activityIndicator.stopAnimating()
         }
     }
     
-    ///Показ алерта с ошибкой
     private func showNetworkError(message: String) {
-        showLoadingIndicator(Bool: false)
+        showLoadingIndicator(shouldShow: true)
         buttonIsEnabled(Bool: false)
         
         let alertModel = AlertModel(title: "Ошибка",
@@ -188,12 +190,12 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         })
         alertPresenter?.showAlert(with: alertModel)
     }
-    ///Метод при успешной загрузки данных и вывода их
+    
     func didLoadDataFromServer() {
-        showLoadingIndicator(Bool: true)
+        showLoadingIndicator(shouldShow: false)
         questionFactory?.requestNextQuestion()
     }
-    ///Метод при ошибки загрузки данных
+    
     func didFailToLoadData(with error: Error) {
         showNetworkError(message: error.localizedDescription)
     }
