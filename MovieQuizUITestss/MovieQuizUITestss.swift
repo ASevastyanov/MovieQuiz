@@ -73,7 +73,7 @@ final class MovieQuizUITestss: XCTestCase {
             sleep(1)
         }
         sleep(1)
-        let alert = app.alerts["Этот раунд окончен!"]
+        let alert = app.alerts["Alert presenter"]
         
         XCTAssertTrue(alert.exists)
         XCTAssertEqual(alert.label, "Этот раунд окончен!")
@@ -89,7 +89,7 @@ final class MovieQuizUITestss: XCTestCase {
             sleep(1)
         }
         sleep(1)
-        let alert = app.alerts["Этот раунд окончен!"]
+        let alert = app.alerts["Alert presenter"]
         alert.buttons.firstMatch.tap()
         
         let indexLabel = app.staticTexts["Index"]

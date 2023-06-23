@@ -4,18 +4,15 @@ import UIKit
 final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     // MARK: - Propeties
-    private var alertPresenter: AlertPresenterProtocol?
-    ///Счетчик вопросов
-    private var currentQuestionIndex = 0
     ///Кол-во правильных ответов
     private var correctAnswers = 0
     var correctAnswersToQuestion = 0
-    ///Кол-во вопросов для одного раунда
-    private let questionsAmount: Int = 10
     // Делегаты
+    private var alertPresenter: AlertPresenterProtocol?
     private var questionFactory: QuestionFactoryProtocol?
     private var currentQuestion: QuizQuestion?
     private var statisticService: StatisticService?
+    private let presenter = MovieQuizPresenter()
     
     ///Переменная для изменения цвета StatusBar
     override var preferredStatusBarStyle: UIStatusBarStyle {
@@ -51,7 +48,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         imageView?.layer.cornerRadius = 20
         alertPresenter = AlertPresenter(viewController: self)
         questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
@@ -70,21 +67,13 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
             return
         }
         currentQuestion = question
-        let viewModel = convertQuestions(model: question)
+        let viewModel = presenter.convertQuestions(model: question)
         DispatchQueue.main.async { [weak self] in
             self?.showQuiz(quiz: viewModel)
         }
     }
     
     //MARK: - Методы (Логика работы)
-    /// Метод для ковертации вопросов
-    private func convertQuestions(model: QuizQuestion) -> QuizStepViewModel {
-        return QuizStepViewModel(
-            image: UIImage(data: model.image) ?? UIImage(),
-            question: model.text,
-            questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)")
-    }
-    
     /// Метод для отображения вопросов
     private func showQuiz(quiz step: QuizStepViewModel) {
         counterLabel.text = step.questionNumber
@@ -97,7 +86,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         imageView?.layer.borderWidth = 0 //Убрать рамку с появление нового вопроса(showAnswerResult)
     }
     
-    // Метод, для отображение рамки правильного и не правильного ответа
+    /// Метод, для отображение рамки правильного и не правильного ответа
     private func showAnswerResult(isCorrect: Bool) {
         if isCorrect {
             correctAnswers += 1 //счет очков если правильны ответ
@@ -119,24 +108,23 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     /// Логика перехода в один из сценариев
     private func showNextQuestionOrResults() {
-        if currentQuestionIndex == questionsAmount - 1 {
+        if presenter.isLastQuestion() {
             showResult()
         } else {
-            currentQuestionIndex += 1
+            presenter.switchToNextQuestion()
             questionFactory?.requestNextQuestion()
         }
     }
     
     ///Метод для отображения алерта с результатми игры
     private func showResult() {
-        statisticService?.store(correct: correctAnswers, total: questionsAmount)
-        
+        statisticService?.store(correct: correctAnswers, total: presenter.questionsAmount)
         let alertModel = AlertModel(title: "Этот раунд окончен!",
                                     message: makeResultMassage(),
                                     buttonText: "Сыграть еще раз",
                                     completion: { [weak self] in
             guard let self else {return}
-            self.currentQuestionIndex = 0
+            self.presenter.resetQuestionIndex()
             self.correctAnswers = 0
             self.questionFactory?.requestNextQuestion()
         })
@@ -151,7 +139,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
             return ""
         }
         
-        let currentGameResultLine = "Ваш результат: \(correctAnswers)/\(questionsAmount)"
+        let currentGameResultLine = "Ваш результат: \(correctAnswers)/\(presenter.questionsAmount)"
         let totalPlaysCountLine = "Количество сыгранных квизов: \(statisticService.gamesCount)"
         let bestGameInfoLine = "Рекорд: \(bestGame.correct)/\(bestGame.total) " + "(\(bestGame.date.dateTimeString))"
         let averageAccuracyLine = "Средняя точность: \(String(format: "%.2f", statisticService.totalAccuracy))%"
