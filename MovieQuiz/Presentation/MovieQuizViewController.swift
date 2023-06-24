@@ -7,7 +7,6 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     ///Кол-во правильных ответов
     private var correctAnswers = 0
     var correctAnswersToQuestion = 0
-    // Делегаты
     private var alertPresenter: AlertPresenterProtocol?
     private var questionFactory: QuestionFactoryProtocol?
     private var currentQuestion: QuizQuestion?
@@ -27,24 +26,6 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     @IBOutlet private weak var noAnswerButton: UIButton!
     @IBOutlet private weak var activityIndicator: UIActivityIndicatorView!
     
-    @IBAction private func yesButtonClicked(_ sender: UIButton) {
-        guard let currentQuestion = currentQuestion else {
-            return
-        }
-        let givenAnswer = true
-        
-        showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
-    }
-    
-    @IBAction private func noButtonClicked(_ sender: UIButton) {
-        guard let currentQuestion = currentQuestion else {
-            return
-        }
-        let givenAnswer = false
-        
-        showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
-    }
-    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -59,6 +40,19 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         questionFactory?.loadData()
         
         activityIndicator.hidesWhenStopped = true
+        
+        presenter.viewController = self
+    }
+    
+    @IBAction private func yesButtonClicked(_ sender: UIButton) {
+        presenter.currentQuestion = currentQuestion
+        presenter.yesButtonClicked()
+    }
+    
+    
+    @IBAction private func noButtonClicked(_ sender: UIButton) {
+        presenter.currentQuestion = currentQuestion
+        presenter.noButtonClicked()
     }
     
     // MARK: - QuestionFactoryDelegate
@@ -87,7 +81,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     }
     
     /// Метод, для отображение рамки правильного и не правильного ответа
-    private func showAnswerResult(isCorrect: Bool) {
+    func showAnswerResult(isCorrect: Bool) {
         if isCorrect {
             correctAnswers += 1 //счет очков если правильны ответ
             correctAnswersToQuestion = correctAnswers
