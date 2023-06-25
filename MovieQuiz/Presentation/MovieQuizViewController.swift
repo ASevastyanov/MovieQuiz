@@ -1,24 +1,7 @@
 import UIKit
 
 //MARK: - Основной класс приложения
-final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
-    
-    // MARK: - Propeties
-    ///Кол-во правильных ответов
-    private var correctAnswers = 0
-    var correctAnswersToQuestion = 0
-    private var alertPresenter: AlertPresenterProtocol?
-    private var questionFactory: QuestionFactoryProtocol?
-    private var currentQuestion: QuizQuestion?
-    private var statisticService: StatisticService?
-    private let presenter = MovieQuizPresenter()
-    
-    ///Переменная для изменения цвета StatusBar
-    override var preferredStatusBarStyle: UIStatusBarStyle {
-        return .lightContent
-    }
-    
-    // MARK: - @IBOutlet
+final class MovieQuizViewController: UIViewController {
     @IBOutlet private weak var imageView: UIImageView?
     @IBOutlet private weak var textLabel: UILabel!
     @IBOutlet private weak var counterLabel: UILabel!
@@ -26,140 +9,56 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     @IBOutlet private weak var noAnswerButton: UIButton!
     @IBOutlet private weak var activityIndicator: UIActivityIndicatorView!
     
+    private var presenter: MovieQuizPresenter!
+    private var alertPresenter: AlertPresenterProtocol?
+    
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return .lightContent
+    }
+    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        imageView?.layer.cornerRadius = 20
+        presenter = MovieQuizPresenter(viewController: self)
         alertPresenter = AlertPresenter(viewController: self)
-        questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
-        statisticService = StatisticServiceImplementation()
-        questionFactory?.requestNextQuestion()
-        
-        showLoadingIndicator(shouldShow: true)
-        questionFactory?.loadData()
-        
+        imageView?.layer.cornerRadius = 20
         activityIndicator.hidesWhenStopped = true
-        
-        presenter.viewController = self
     }
     
+    // MARK: - Actions
     @IBAction private func yesButtonClicked(_ sender: UIButton) {
-        presenter.currentQuestion = currentQuestion
-        presenter.yesButtonClicked()
+        self.presenter.yesButtonClicked()
     }
-    
     
     @IBAction private func noButtonClicked(_ sender: UIButton) {
-        presenter.currentQuestion = currentQuestion
         presenter.noButtonClicked()
     }
     
-    // MARK: - QuestionFactoryDelegate
-    func didReceiveNextQuestion(question: QuizQuestion?) {
-        guard let question = question else {
-            return
-        }
-        currentQuestion = question
-        let viewModel = presenter.convertQuestions(model: question)
-        DispatchQueue.main.async { [weak self] in
-            self?.showQuiz(quiz: viewModel)
-        }
-    }
-    
-    //MARK: - Методы (Логика работы)
-    /// Метод для отображения вопросов
-    private func showQuiz(quiz step: QuizStepViewModel) {
+    //MARK: - Methods
+    func showQuiz(quiz step: QuizStepViewModel) {
         counterLabel.text = step.questionNumber
         imageView?.image = step.image
         textLabel.text = step.question
         
-        buttonIsEnabled(Bool: true) //метод для включение кнопок
+        buttonIsEnabled(Bool: true)
         showLoadingIndicator(shouldShow: false)
-        
-        imageView?.layer.borderWidth = 0 //Убрать рамку с появление нового вопроса(showAnswerResult)
+        turnOffFrame()
     }
     
-    /// Метод, для отображение рамки правильного и не правильного ответа
-    func showAnswerResult(isCorrect: Bool) {
-        if isCorrect {
-            correctAnswers += 1 //счет очков если правильны ответ
-            correctAnswersToQuestion = correctAnswers
-        }
-        imageView?.layer.masksToBounds = true
-        imageView?.layer.borderWidth = 8
-        imageView?.layer.borderColor = isCorrect ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
-        
-        buttonIsEnabled(Bool: false) // Метод для выключения кнопок
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            guard let self = self else {return}
-            self.showNextQuestionOrResults()
-            sleep(1)
-            self.showLoadingIndicator(shouldShow: true)
-        }
-    }
-    
-    /// Логика перехода в один из сценариев
-    private func showNextQuestionOrResults() {
-        if presenter.isLastQuestion() {
-            showResult()
-        } else {
-            presenter.switchToNextQuestion()
-            questionFactory?.requestNextQuestion()
-        }
-    }
-    
-    ///Метод для отображения алерта с результатми игры
-    private func showResult() {
-        statisticService?.store(correct: correctAnswers, total: presenter.questionsAmount)
+    func showAlertResult() {
         let alertModel = AlertModel(title: "Этот раунд окончен!",
-                                    message: makeResultMassage(),
+                                    message: presenter.makeResultMassage(),
                                     buttonText: "Сыграть еще раз",
                                     completion: { [weak self] in
             guard let self else {return}
-            self.presenter.resetQuestionIndex()
-            self.correctAnswers = 0
-            self.questionFactory?.requestNextQuestion()
+            self.presenter.restarGame()
         })
+        
+        turnOffFrame()
         alertPresenter?.showAlert(with: alertModel)
     }
     
-    ///Генерация результата для алерта
-    private func makeResultMassage() -> String {
-        
-        guard let statisticService = statisticService, let bestGame = statisticService.bestGame else {
-            assertionFailure("Error massge")
-            return ""
-        }
-        
-        let currentGameResultLine = "Ваш результат: \(correctAnswers)/\(presenter.questionsAmount)"
-        let totalPlaysCountLine = "Количество сыгранных квизов: \(statisticService.gamesCount)"
-        let bestGameInfoLine = "Рекорд: \(bestGame.correct)/\(bestGame.total) " + "(\(bestGame.date.dateTimeString))"
-        let averageAccuracyLine = "Средняя точность: \(String(format: "%.2f", statisticService.totalAccuracy))%"
-        
-        let resultMassage = [
-            currentGameResultLine, totalPlaysCountLine, bestGameInfoLine, averageAccuracyLine
-        ].joined(separator: "\n")
-        
-        return resultMassage
-    }
-    
-    ///Метод включения выключения кнопок во время показа результата
-    private func buttonIsEnabled(Bool: Bool) {
-        noAnswerButton.isEnabled = Bool
-        yesAnswerButton.isEnabled = Bool
-    }
-    
-    private func showLoadingIndicator(shouldShow: Bool) {
-        if shouldShow == true {
-            activityIndicator.startAnimating()
-        } else {
-            activityIndicator.stopAnimating()
-        }
-    }
-    
-    private func showNetworkError(message: String) {
+    func showNetworkError(message: String) {
         showLoadingIndicator(shouldShow: true)
         buttonIsEnabled(Bool: false)
         
@@ -168,17 +67,32 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
                                     buttonText: "Попробовать еще раз",
                                     completion: { [weak self] in
             guard let self else { return }
-            self.questionFactory?.loadData()
+            self.presenter.restarGame()
         })
         alertPresenter?.showAlert(with: alertModel)
     }
     
-    func didLoadDataFromServer() {
-        showLoadingIndicator(shouldShow: false)
-        questionFactory?.requestNextQuestion()
+    func highlightImageBorder(isCorrectAnswer: Bool) {
+        imageView?.layer.masksToBounds = true
+        imageView?.layer.borderWidth = 8
+        imageView?.layer.borderColor = isCorrectAnswer ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
+        buttonIsEnabled(Bool: false)
     }
     
-    func didFailToLoadData(with error: Error) {
-        showNetworkError(message: error.localizedDescription)
+    func turnOffFrame (color:UIColor = UIColor.clear) {
+        imageView?.layer.borderColor = color.cgColor
+    }
+    
+    func buttonIsEnabled(Bool: Bool) {
+        noAnswerButton.isEnabled = Bool
+        yesAnswerButton.isEnabled = Bool
+    }
+    
+    func showLoadingIndicator(shouldShow: Bool) {
+        if shouldShow == true {
+            activityIndicator.startAnimating()
+        } else {
+            activityIndicator.stopAnimating()
+        }
     }
 }
