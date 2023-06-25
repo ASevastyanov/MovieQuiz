@@ -1,7 +1,7 @@
 import UIKit
 
 //MARK: - Основной класс приложения
-final class MovieQuizViewController: UIViewController {
+final class MovieQuizViewController: UIViewController, MovieQuizViewControllerProtocol {
     @IBOutlet private weak var imageView: UIImageView?
     @IBOutlet private weak var textLabel: UILabel!
     @IBOutlet private weak var counterLabel: UILabel!
