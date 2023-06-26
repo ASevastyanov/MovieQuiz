@@ -5,7 +5,6 @@
 //  Created by Alexandr Seva on 21.06.2023.
 //
 
-import Foundation
 import UIKit
 
 final class MovieQuizPresenter: QuestionFactoryDelegate {
@@ -32,20 +31,11 @@ final class MovieQuizPresenter: QuestionFactoryDelegate {
     // MARK: - Methods
     
     func yesButtonClicked() {
-        didAnswer(isYes: true)
+        answerCheck(isYes: true)
     }
     
     func noButtonClicked() {
-        didAnswer(isYes: false)
-    }
-    
-    private func didAnswer(isYes: Bool) {
-        guard let currentQuestion = currentQuestion else {
-            return
-        }
-        let givenAnswer = isYes
-        
-        proceedWithAnswer(isCorrect: givenAnswer == currentQuestion.correctAnswer)
+        answerCheck(isYes: false)
     }
     
     func didReceiveNextQuestion(question: QuizQuestion?) {
@@ -76,55 +66,26 @@ final class MovieQuizPresenter: QuestionFactoryDelegate {
         questionFactory?.requestNextQuestion()
     }
     
-    private func proceedToNextQuestionOrResults() {
-        if isLastQuestion() {
-            viewController?.showAlertResult()
-        } else {
-            self.switchToNextQuestion()
-        }
-    }
-    
     func didLoadDataFromServer() {
         viewController?.showLoadingIndicator(shouldShow: false)
         questionFactory?.requestNextQuestion()
     }
     
     func didFailToLoadData(with error: Error) {
-        viewController?.showNetworkError(message: error.localizedDescription)
+        viewController?.showAlertNetworkError(message: error.localizedDescription)
     }
     
-    func restarGame() {
+    func restartGame() {
         currentQuestionIndex = 0
         correctAnswers = 0
         questionFactory?.requestNextQuestion()
     }
     
-    private func didAnswer(isCorrectAnswer: Bool) {
-            if isCorrectAnswer {
-                correctAnswers += 1
-            }
-        }
-    
-    private func proceedWithAnswer(isCorrect: Bool) {
-        didAnswer(isCorrectAnswer: isCorrect)
-        
-        viewController?.highlightImageBorder(isCorrectAnswer: isCorrect)
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            guard let self = self else {return}
-            self.correctAnswers = self.correctAnswers
-            self.questionFactory = self.questionFactory
-            self.proceedToNextQuestionOrResults()
-            sleep(1)
-            self.viewController?.showLoadingIndicator(shouldShow: true)
-        }
-    }
-    
     func makeResultMassage() -> String {
-        statisticService?.store(correct: correctAnswers, total: questionsAmount)
+        statisticService?.saveResultRecord(correct: correctAnswers, total: questionsAmount)
         
         guard let statisticService = statisticService, let bestGame = statisticService.bestGame else {
-            assertionFailure("Error massge")
+            assertionFailure("Error massage")
             return ""
         }
         
@@ -138,5 +99,43 @@ final class MovieQuizPresenter: QuestionFactoryDelegate {
         ].joined(separator: "\n")
         
         return resultMassage
+    }
+    
+    // MARK: - Private Methods
+    private func addingPoint(isCorrectAnswer: Bool) {
+        if isCorrectAnswer {
+            correctAnswers += 1
+        }
+    }
+    
+    private func proceedWithAnswer(isCorrect: Bool) {
+        addingPoint(isCorrectAnswer: isCorrect)
+        
+        viewController?.highlightImageBorder(isCorrectAnswer: isCorrect)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self = self else {return}
+            self.correctAnswers = self.correctAnswers
+            self.questionFactory = self.questionFactory
+            self.proceedToNextQuestionOrResults()
+            self.viewController?.showLoadingIndicator(shouldShow: true)
+        }
+    }
+    
+    private func proceedToNextQuestionOrResults() {
+        if isLastQuestion() {
+            viewController?.showAlertResult()
+        } else {
+            self.switchToNextQuestion()
+        }
+    }
+    
+    private func answerCheck(isYes: Bool) {
+        guard let currentQuestion = currentQuestion else {
+            return
+        }
+        let givenAnswer = isYes
+        
+        proceedWithAnswer(isCorrect: givenAnswer == currentQuestion.correctAnswer)
     }
 }

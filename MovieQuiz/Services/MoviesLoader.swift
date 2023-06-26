@@ -12,12 +12,12 @@ protocol MoviesLoading {
 }
 
 struct MoviesLoader: MoviesLoading {
-  // MARK: - NetworkClient
-  private let networkClient: NetworkRouting
-  
-  init(networkClient: NetworkRouting = NetworkClient()) {
-      self.networkClient = networkClient
-  }
+    // MARK: - NetworkClient
+    private let networkClient: NetworkRouting
+    
+    init(networkClient: NetworkRouting = NetworkClient()) {
+        self.networkClient = networkClient
+    }
     
     // MARK: - URL
     private var mostPopularMoviesUrl: URL {
@@ -26,6 +26,8 @@ struct MoviesLoader: MoviesLoading {
         }
         return url
     }
+    
+    // MARK: - Methods
     
     func loadMovies(handler: @escaping (Result<MostPopularMovies, Error>) -> Void) {
         networkClient.fetch(url: mostPopularMoviesUrl) { result in

@@ -40,7 +40,7 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
         imageView?.image = step.image
         textLabel.text = step.question
         
-        buttonIsEnabled(Bool: true)
+        buttonIsEnabled(turnOn: true)
         showLoadingIndicator(shouldShow: false)
         turnOffFrame()
     }
@@ -51,23 +51,23 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
                                     buttonText: "Сыграть еще раз",
                                     completion: { [weak self] in
             guard let self else {return}
-            self.presenter.restarGame()
+            presenter?.restartGame()
         })
         
         turnOffFrame()
         alertPresenter?.showAlert(with: alertModel)
     }
     
-    func showNetworkError(message: String) {
+    func showAlertNetworkError(message: String) {
         showLoadingIndicator(shouldShow: true)
-        buttonIsEnabled(Bool: false)
+        buttonIsEnabled(turnOn: false)
         
         let alertModel = AlertModel(title: "Ошибка",
                                     message: message,
                                     buttonText: "Попробовать еще раз",
                                     completion: { [weak self] in
             guard let self else { return }
-            self.presenter.restarGame()
+            presenter?.restartGame()
         })
         alertPresenter?.showAlert(with: alertModel)
     }
@@ -76,20 +76,20 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
         imageView?.layer.masksToBounds = true
         imageView?.layer.borderWidth = 8
         imageView?.layer.borderColor = isCorrectAnswer ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
-        buttonIsEnabled(Bool: false)
+        buttonIsEnabled(turnOn: false)
     }
     
     func turnOffFrame (color:UIColor = UIColor.clear) {
         imageView?.layer.borderColor = color.cgColor
     }
     
-    func buttonIsEnabled(Bool: Bool) {
-        noAnswerButton.isEnabled = Bool
-        yesAnswerButton.isEnabled = Bool
+    func buttonIsEnabled(turnOn: Bool) {
+        noAnswerButton.isEnabled = turnOn
+        yesAnswerButton.isEnabled = turnOn
     }
     
     func showLoadingIndicator(shouldShow: Bool) {
-        if shouldShow == true {
+        if shouldShow{
             activityIndicator.startAnimating()
         } else {
             activityIndicator.stopAnimating()

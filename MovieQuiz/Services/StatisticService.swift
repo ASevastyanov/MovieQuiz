@@ -5,7 +5,7 @@ protocol StatisticService {
     var gamesCount: Int { get }
     var bestGame: GameRecord? { get }
     
-    func store(correct count: Int, total amount: Int)
+    func saveResultRecord(correct count: Int, total amount: Int)
 }
 
 //MARK: Класс по подсчету статистики и хранению
@@ -86,8 +86,7 @@ final class StatisticServiceImplementation: StatisticService {
     }
     
     //MARK: - Func
-    /// Функция по сохранению лучшего результата
-    func store(correct: Int, total: Int) {
+    func saveResultRecord(correct: Int, total: Int) {
         self.gamesCount += 1
         self.total += total
         self.correct += correct
